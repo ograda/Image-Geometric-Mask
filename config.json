@@ -1,8 +1,8 @@
 {
-  "version": 2,
+  "version": 3,
   "mode": "white",
   "input": null,
-  "name": "teste-losangos",
+  "name": "crystal-test",
   "output": {
     "directory": "results",
     "width": 750,
@@ -17,11 +17,68 @@
     "count": 6
   },
   "geometry": {
-    "horizontal_diagonal": 0.08977,
-    "vertical_diagonal": 0.16393,
+    "template": "rhombus",
     "origin_x": 0.016,
     "origin_y": 0.021,
-    "edge_margin": 0.004
+    "edge_margin": 0.004,
+    "shapes": {
+      "rhombus": { "unit": "px", "width": 135, "height": 197 },
+      "square": { "unit": "px", "width": 110, "height": 110 },
+      "rectangle": { "unit": "px", "width": 115, "height": 95 },
+      "triangle": { "unit": "px", "width": 170, "height": 147 },
+      "hexagon": { "unit": "px", "width": 115, "height": 130 },
+      "free": {
+        "step_x": 1.0,
+        "step_y": 1.0,
+        "row_shift": 0.0,
+        "polygons": [
+          [
+            [
+              0,
+              0
+            ],
+            [
+              0.4,
+              0
+            ],
+            [
+              0.53,
+              0.5
+            ],
+            [
+              0.4,
+              1
+            ],
+            [
+              0,
+              1
+            ]
+          ],
+          [
+            [
+              0.4,
+              0
+            ],
+            [
+              1,
+              0
+            ],
+            [
+              1,
+              1
+            ],
+            [
+              0.4,
+              1
+            ],
+            [
+              0.53,
+              0.5
+            ]
+          ]
+        ]
+      }
+    }
   },
   "silhouette": {
     "shape": "crystal_superellipse",

@@ -1,6 +1,7 @@
 # Imagens em qualquer nível do projeto
 *.png
 *.webp
+*.prompt
 
 # Todas as pastas e seus conteúdos
 /*/
