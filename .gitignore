@@ -1,0 +1,6 @@
+# Imagens em qualquer nível do projeto
+*.png
+*.webp
+
+# Todas as pastas e seus conteúdos
+/*/

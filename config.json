@@ -1,0 +1,89 @@
+{
+  "version": 2,
+  "mode": "white",
+  "input": null,
+  "name": "teste-losangos",
+  "output": {
+    "directory": "results",
+    "width": 750,
+    "height": 600,
+    "work_width": 1500,
+    "webp": true,
+    "contact_sheet": true,
+    "save_geometry_diagram": true
+  },
+  "variations": {
+    "seed": 100,
+    "count": 6
+  },
+  "geometry": {
+    "horizontal_diagonal": 0.08977,
+    "vertical_diagonal": 0.16393,
+    "origin_x": 0.016,
+    "origin_y": 0.021,
+    "edge_margin": 0.004
+  },
+  "silhouette": {
+    "shape": "crystal_superellipse",
+    "radius_x": 0.54,
+    "radius_y": 0.555,
+    "power_x": 5.0,
+    "power_y": 5.0,
+    "outer_prune_min": 7,
+    "outer_prune_max": 13,
+    "allow_detached_facets": false
+  },
+  "focus": {
+    "safety_margin": 0.024,
+    "ellipses": [
+      [
+        0.5,
+        0.49,
+        0.24,
+        0.25
+      ]
+    ]
+  },
+  "facets": {
+    "holes": 7,
+    "dark": 20,
+    "light": 16,
+    "dark_strength": 0.2,
+    "light_strength": 0.13,
+    "subtle_variation": 0.018,
+    "minimum_hole_separation_cells": 1
+  },
+  "finish": {
+    "line_opacity": 0.12,
+    "line_width_px": 1.05,
+    "grain": 1.15,
+    "contrast": 1.0,
+    "saturation": 1.0
+  },
+  "debug_white": {
+    "draw_grid": true,
+    "grid_line_opacity": 0.34,
+    "grid_line_width_px": 1.8,
+    "dark_color": [
+      171,
+      185,
+      210
+    ],
+    "light_color": [
+      217,
+      230,
+      249
+    ],
+    "normal_color": [
+      255,
+      255,
+      255
+    ]
+  },
+  "batch": {
+    "enabled": true,
+    "input_directory": ".",
+    "seed_per_image": true,
+    "continue_on_error": true
+  }
+}
