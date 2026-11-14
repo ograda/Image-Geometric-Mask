@@ -1,29 +1,23 @@
 {
-  "version": 3,
-  "mode": "white",
-  "input": null,
-  "name": "crystal-test",
+  "version": 4,
+  "mode": "artwork",
   "output": {
     "directory": "results",
-    "width": 750,
-    "height": 600,
-    "work_width": 1500,
-    "webp": true,
+    "count": 10,
+    "resize": { "resize": true, "width": 750, "height": 600 },
+    "image_types": { "png": true, "webp": true, "jpeg": false },
     "contact_sheet": true,
-    "save_geometry_diagram": true
+    "contact_sheet_page_size": 10
   },
-  "variations": {
-    "seed": 100,
-    "count": 6
-  },
+  "work_size": { "resize": true, "width": 1500, "height": 1200 },
   "geometry": {
     "template": "rhombus",
-    "origin_x": 0.016,
-    "origin_y": 0.021,
-    "edge_margin": 0.004,
+    "offset_x": 0.016,
+    "offset_y": 0.020,
+    "canvas_margin": 0.005,
     "shapes": {
       "rhombus": { "unit": "px", "width": 135, "height": 197 },
-      "square": { "unit": "px", "width": 110, "height": 110 },
+      "square": { "unit": "px", "side": 110 },
       "rectangle": { "unit": "px", "width": 115, "height": 95 },
       "triangle": { "unit": "px", "width": 170, "height": 147 },
       "hexagon": { "unit": "px", "width": 115, "height": 130 },
@@ -32,115 +26,48 @@
         "step_y": 1.0,
         "row_shift": 0.0,
         "polygons": [
-          [
-            [
-              0,
-              0
-            ],
-            [
-              0.4,
-              0
-            ],
-            [
-              0.53,
-              0.5
-            ],
-            [
-              0.4,
-              1
-            ],
-            [
-              0,
-              1
-            ]
-          ],
-          [
-            [
-              0.4,
-              0
-            ],
-            [
-              1,
-              0
-            ],
-            [
-              1,
-              1
-            ],
-            [
-              0.4,
-              1
-            ],
-            [
-              0.53,
-              0.5
-            ]
-          ]
+          [ [ 0, 0 ], [ 0.4, 0 ], [ 0.53, 0.5 ], [ 0.4, 1 ], [ 0, 1 ] ],
+          [ [ 0.4, 0 ], [ 1, 0 ], [ 1, 1 ], [ 0.4, 1 ], [ 0.53, 0.5 ] ]
         ]
       }
     }
   },
   "silhouette": {
     "shape": "crystal_superellipse",
-    "radius_x": 0.54,
-    "radius_y": 0.555,
-    "power_x": 5.0,
-    "power_y": 5.0,
-    "outer_prune_min": 7,
-    "outer_prune_max": 13,
+    "radius": { "x": 0.6, "y": 0.55},
+    "power": { "x": 5.0, "y": 5.0},
+    "outer_prune": { "min": 7, "max": 13},
     "allow_detached_facets": false
   },
-  "focus": {
+  "protected_areas": {
     "safety_margin": 0.024,
-    "ellipses": [
-      [
-        0.5,
-        0.49,
-        0.24,
-        0.25
-      ]
-    ]
+    "ellipses": [ [ 0.5, 0.49, 0.24, 0.25 ] ]
   },
   "facets": {
-    "holes": 7,
-    "dark": 20,
+    "holes": 8,
+    "dark": 24,
     "light": 16,
-    "dark_strength": 0.2,
-    "light_strength": 0.13,
-    "subtle_variation": 0.018,
-    "minimum_hole_separation_cells": 1
+    "dark_strength": 0.5,
+    "light_strength": 0.25,
+    "subtle_variation": 0.05,
+    "minimum_hole_separation_cells": 0,
+    "geometry": {
+      "lines": { "opacity": 0.12, "width": 1.05, "color": [235, 240, 255] }
+    }
   },
   "finish": {
-    "line_opacity": 0.12,
-    "line_width_px": 1.05,
     "grain": 1.15,
     "contrast": 1.0,
     "saturation": 1.0
   },
   "debug_white": {
     "draw_grid": true,
-    "grid_line_opacity": 0.34,
-    "grid_line_width_px": 1.8,
-    "dark_color": [
-      171,
-      185,
-      210
-    ],
-    "light_color": [
-      217,
-      230,
-      249
-    ],
-    "normal_color": [
-      255,
-      255,
-      255
-    ]
+    "dark_color": [ 171, 185, 210 ],
+    "light_color": [ 217, 230, 249 ],
+    "normal_color": [ 255, 255, 255 ]
   },
   "batch": {
-    "enabled": true,
     "input_directory": ".",
-    "seed_per_image": true,
     "continue_on_error": true
   }
 }
