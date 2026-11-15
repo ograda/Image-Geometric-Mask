@@ -1,15 +1,17 @@
-# Terminal
+# Crystal Filter — CLI
 
 ```powershell
-py .\crystal_filter.py
-py .\crystal_filter.py --batch --count 10
-py .\crystal_filter.py --single "final-fantasy-i"
-py .\crystal_filter.py --debug --template rhombus --seed 100
-py .\crystal_filter.py --single "final-fantasy-i" --seed 100 --count 1
-py .\crystal_filter.py --template square --cell-width 110
-py .\crystal_filter.py --config ".\config.json" --input-dir ".\images"
+py .\crystal_filter.py                               # lote sem JSON de diagnóstico
+py .\crystal_filter.py --single "Terra sobre o Magitek na neve"
+py .\crystal_filter.py --preview                     # formas sobre fundo branco
+py .\crystal_filter.py --preview --debug             # branco + JSONs
+py .\crystal_filter.py --debug                       # lote + JSONs por variação
+py .\crystal_filter.py --single "ff01" --debug       # arte individual + JSONs
+py .\crystal_filter.py --batch --seed 100 --count 10
+py .\crystal_filter.py --input-dir ".\images" --batch
+py .\crystal_filter.py --template hexagon --cell-width 115 --cell-height 130
 ```
 
-`--single` aceita um nome sem extensão, um nome com `.png` ou um caminho completo. Os resultados de cada imagem são colocados na subpasta com o mesmo nome da arte original, dentro de `output.directory`.
+`--debug` pode ser combinado com `--preview`, `--single` ou `--batch`. Sem `--preview`, a arte é processada normalmente, e `--debug` apenas habilita a gravação de JSONs. Por compatibilidade, `mode: "white"` no `config.json` ainda seleciona branco na ausência de flags de modo.
 
-`--debug` utiliza a imagem branca e salva diagramas de malha e foco em `results/_preview` (ou o diretório definido em `output.directory`). A seed é aleatória quando `--seed` não é informado.
+`batch.retry_on_error` é um inteiro >= 0: `0` não repete; `3` permite três repetições após a tentativa inicial. Todas as tentativas de uma mesma imagem utilizam seeds idênticas. Resultados antigos de outras seeds são preservados.

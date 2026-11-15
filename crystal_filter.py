@@ -7,8 +7,10 @@ import copy
 import hashlib
 import json
 import math
+import os
 import secrets
 import sys
+import tempfile
 from collections import deque
 from pathlib import Path
 
@@ -112,6 +114,9 @@ def check_config(cfg):
         raise ValueError('facets.geometry.lines.color precisa conter três valores RGB')
     if float(cfg['finish']['grain']) < 0:
         raise ValueError('finish.grain deve ser >= 0')
+    retry = cfg.get('batch', {}).get('retry_on_error', 0)
+    if isinstance(retry, bool) or not isinstance(retry, int) or retry < 0:
+        raise ValueError('batch.retry_on_error deve ser inteiro >= 0')
 
 
 def validate_seed(seed):
@@ -550,7 +555,7 @@ def save_image(img,folder,stem,types):
         background.save(folder/f'{stem}.jpg',quality=95,subsampling=0)
 
 
-def run(cfg,config_path,root_seed,source_path=None,preview=False,folder_override=None):
+def run(cfg,config_path,root_seed,source_path=None,preview=False,folder_override=None,debug=False):
     mode='white' if preview else 'artwork'
     cfg=copy.deepcopy(cfg);cfg['mode']=mode
     w,h=normalized_source_size(cfg,source_path,preview)
@@ -595,7 +600,8 @@ def run(cfg,config_path,root_seed,source_path=None,preview=False,folder_override
                 'holes':[list(k) for k in holes],
                 'dark':[list(k) for k in dark],
                 'light':[list(k) for k in light]}
-        (folder/f'{stem}.json').write_text(json.dumps(record,ensure_ascii=False,indent=2),encoding='utf-8')
+        if debug:
+            (folder/f'{stem}.json').write_text(json.dumps(record,ensure_ascii=False,indent=2),encoding='utf-8')
         if sheet_enabled:
             thumbnails.append((img.resize((375,300),RESAMPLE),seed,record))
             if len(thumbnails)>=sheet_size or idx==count-1:
@@ -608,7 +614,137 @@ def run(cfg,config_path,root_seed,source_path=None,preview=False,folder_override
     return folder
 
 
-def batch_run(cfg,config_path,root_seed,input_dir=None):
+def expected_files(cfg, root_seed, source_stem, preview=False, debug=False):
+    """Lista exata de saídas para validar uma execução completa."""
+    template = cfg['geometry']['template']
+    name = f'{template}-{source_stem}'
+    count = int(cfg['output']['count'])
+    types = cfg['output']['image_types']
+    images = []
+    data = []
+    for idx in range(count):
+        seed = (root_seed + idx) & MAX_SEED
+        stem = f'{name}-seed-{seed:020d}'
+        for flag, suffix in (('png', '.png'), ('webp', '.webp'), ('jpeg', '.jpg')):
+            if types.get(flag, False):
+                images.append((f'{stem}{suffix}', flag))
+        if debug:
+            data.append(f'{stem}.json')
+    if cfg['output'].get('contact_sheet', False):
+        page_size = int(cfg['output'].get('contact_sheet_page_size', 12))
+        pages = math.ceil(count / page_size)
+        for page in range(1, pages + 1):
+            suffix = f'-{page:02d}' if pages > 1 else ''
+            images.append((f'{name}-comparativo{suffix}.png', 'rgb'))
+    if preview:
+        for suffix in ('geometry-white-grid.png', 'geometry-focus-map.png'):
+            images.append((f'{template}-{suffix}', 'rgba'))
+    return images, data
+
+
+def verify_results(folder, cfg, root_seed, source_stem, preview=False, debug=False):
+    """Sucesso exige todas as saídas esperadas legíveis e sem arquivos de diagnóstico indevidos."""
+    images, data = expected_files(cfg, root_seed, source_stem, preview, debug)
+    for filename, kind in images:
+        path = folder / filename
+        if not path.is_file() or path.stat().st_size == 0:
+            raise RuntimeError(f'Saída ausente ou vazia: {filename}')
+        try:
+            with Image.open(path) as img:
+                img.load()  # verifica também a decodificação dos dados
+                if kind in ('png', 'webp', 'rgba') and img.mode != 'RGBA':
+                    raise ValueError(f'Imagem sem RGBA: {img.mode}')
+                if kind in ('jpeg', 'rgb') and img.mode != 'RGB':
+                    raise ValueError(f'Imagem sem RGB: {img.mode}')
+                if img.width < 1 or img.height < 1:
+                    raise ValueError('Dimensões inválidas')
+        except Exception as exc:
+            raise RuntimeError(f'Saída inválida {filename}: {exc}') from exc
+    for filename in data:
+        path = folder / filename
+        if not path.is_file():
+            raise RuntimeError(f'Debug JSON ausente: {filename}')
+        try:
+            json.loads(path.read_text(encoding='utf-8'))
+        except Exception as exc:
+            raise RuntimeError(f'Debug JSON inválido: {filename}: {exc}') from exc
+    if not debug and any(folder.glob('*.json')):
+        raise RuntimeError('Resultado normal contém JSON de diagnóstico inesperado')
+
+
+def publish_results(staging, destination):
+    """Publica após validação. Mantém resultados de seeds anteriores no destino.
+
+    Em caso de erro durante a publicação, restaura arquivos sobrescritos.
+    """
+    import shutil
+    existed = destination.exists()
+    destination.mkdir(parents=True, exist_ok=True)
+    backup = staging.parent / f'.{destination.name}-backup-{secrets.token_hex(6)}'
+    backup.mkdir(parents=False, exist_ok=False)
+    moved_new = []
+    moved_old = []
+    try:
+        for item in sorted(staging.iterdir()):
+            target = destination / item.name
+            if target.exists():
+                prior = backup / item.name
+                os.replace(target, prior)
+                moved_old.append((prior, target))
+            os.replace(item, target)
+            moved_new.append(target)
+    except Exception as exc:
+        failures = []
+        for target in reversed(moved_new):
+            try:
+                target.unlink(missing_ok=True)
+            except Exception as restore_exc:
+                failures.append(str(restore_exc))
+        for prior, target in reversed(moved_old):
+            try:
+                os.replace(prior, target)
+            except Exception as restore_exc:
+                failures.append(str(restore_exc))
+        if not existed and not any(destination.iterdir()):
+            destination.rmdir()
+        if failures:
+            # Não apagar os backups caso seja impossível restaurar um arquivo.
+            raise RuntimeError(f'Publicação falhou; backups preservados em {backup}: {failures}') from exc
+        shutil.rmtree(backup, ignore_errors=True)
+        raise
+    else:
+        # Backups somente são descartados após a publicação completa.
+        shutil.rmtree(backup, ignore_errors=True)
+
+
+def run_with_retries(cfg, config_path, root_seed, source_path, destination, preview=False, debug=False):
+    """0 = nenhuma repetição; 3 = primeira tentativa + até 3 repetições.
+
+    Repetições usam a MESMA seed e nunca publicam uma tentativa incompleta.
+    """
+    retries = int(cfg.get('batch', {}).get('retry_on_error', 0))
+    destination = Path(destination)
+    if not destination.is_absolute():
+        destination = config_path.parent / destination
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    name = source_path.stem if source_path else 'white'
+    for attempt in range(1, retries + 2):
+        try:
+            with tempfile.TemporaryDirectory(prefix=f'.{name}-attempt-', dir=destination.parent) as tmp:
+                stage = Path(tmp)
+                run(cfg, config_path, root_seed, source_path=source_path,
+                    preview=preview, folder_override=stage, debug=debug)
+                verify_results(stage, cfg, root_seed, name, preview=preview, debug=debug)
+                publish_results(stage, destination)
+            return destination
+        except Exception as exc:
+            if attempt <= retries:
+                print(f'FALHA [{name}] tentativa {attempt}/{retries+1}: {exc}; repetindo...', file=sys.stderr, flush=True)
+            else:
+                raise RuntimeError(f'{name}: falhou após {attempt} tentativa(s): {exc}') from exc
+
+
+def batch_run(cfg,config_path,root_seed,input_dir=None,debug=False):
     batch=cfg.get('batch',{})
     inp=Path(input_dir) if input_dir is not None else Path(batch.get('input_directory','.'))
     if not inp.is_absolute():inp=config_path.parent/inp
@@ -627,7 +763,7 @@ def batch_run(cfg,config_path,root_seed,input_dir=None):
         print(f'[{i}/{len(inputs)}] {path.name}',flush=True)
         file_seed=stable_seed(root_seed,path.name)
         try:
-            run(cfg,config_path,file_seed,path,folder_override=out/path.stem)
+            run_with_retries(cfg,config_path,file_seed,path,out/path.stem,debug=debug)
         except Exception as exc:
             errors.append((path.name,str(exc)))
             print(f'ERRO {path.name}: {exc}',file=sys.stderr)
@@ -682,9 +818,10 @@ def main():
     p=argparse.ArgumentParser(description='JulioOS Crystal Filter: mosaicos de polígonos, variações e lote')
     p.add_argument('--config',type=Path,default=Path('config.json'))
     group=p.add_mutually_exclusive_group()
-    group.add_argument('--debug',action='store_true',dest='preview',help='Gera testes sobre fundo branco e diagramas de foco/malha')
+    group.add_argument('--preview',action='store_true',help='Gera testes com fundo branco e diagramas de foco/malha')
     group.add_argument('--single',type=Path,metavar='IMAGE',help='Processa um PNG por nome (sem .png) ou caminho')
     group.add_argument('--batch',action='store_true',help='Processa todos os PNGs da pasta de entrada')
+    p.add_argument('--debug',action='store_true',help='Grava JSON de facetas/seed para cada variação')
     p.add_argument('--input-dir',type=Path,help='Pasta de entrada para lote')
     p.add_argument('--seed',type=int,help='Seed fixa de 0 a 2^64-1; se omitida, gera seed aleatória')
     p.add_argument('--count','--variants',type=int,help='Número de variações, substitui output.count')
@@ -717,17 +854,17 @@ def main():
     root_seed=validate_seed(args.seed)
     try:
         if args.preview or (cfg.get('mode')=='white' and args.single is None and not args.batch and args.input_dir is None):
-            folder=run(cfg,path,root_seed,preview=True,folder_override=Path(cfg['output']['directory'])/'_preview')
+            folder=run_with_retries(cfg,path,root_seed,None,Path(cfg['output']['directory'])/'_preview',preview=True,debug=args.debug)
             print('Prévia:',folder)
         elif args.single is not None:
             source=resolve_single_image(args.single,path,cfg,args.input_dir)
             out=Path(cfg['output']['directory'])
-            folder=run(cfg,path,root_seed,source_path=source,folder_override=out/source.stem)
+            folder=run_with_retries(cfg,path,root_seed,source,out/source.stem,debug=args.debug)
             print('Saída:',folder)
         else:
-            errors=batch_run(cfg,path,root_seed,args.input_dir)
+            errors=batch_run(cfg,path,root_seed,args.input_dir,debug=args.debug)
             if errors:raise SystemExit(1)
-    except (ValueError,FileNotFoundError,NotADirectoryError) as exc:
+    except (ValueError,FileNotFoundError,NotADirectoryError,RuntimeError) as exc:
         raise SystemExit(f'ERRO: {exc}') from None
 
 if __name__=='__main__':

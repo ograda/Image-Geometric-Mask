@@ -68,6 +68,7 @@
   },
   "batch": {
     "input_directory": ".",
-    "continue_on_error": true
+    "continue_on_error": true,
+     "retry_on_error": 3
   }
 }
